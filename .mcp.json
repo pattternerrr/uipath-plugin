@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "uipath-mcp-csharp": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/UiPathMCP.exe",
+      "args": [],
+      "env": {
+        "MCP_LEAN": "true"
+      }
+    }
+  }
+}

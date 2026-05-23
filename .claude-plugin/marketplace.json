@@ -1,0 +1,11 @@
+{
+  "name": "mustafa-uipath",
+  "owner": { "name": "Mustafa Basar", "email": "mustafa.basar777@gmail.com" },
+  "plugins": [
+    {
+      "name": "uipath-mcp-plugin",
+      "source": "./",
+      "description": "UiPath Studio/RPA workflow automation: typed C# MCP server (7 tools), canonical CDP selector pipeline, structural guard. Windows-only."
+    }
+  ]
+}

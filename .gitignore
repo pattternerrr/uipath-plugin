@@ -1,0 +1,5 @@
+# bin/ DAHİL EDİLİR (dağıtım için exe gerekli) — ignore ETME.
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
