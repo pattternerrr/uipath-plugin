@@ -1,0 +1,36 @@
+---
+description: UiPath .xaml workflow düzenleme detayları — sık XAML hataları, namespace/enum kuralları, edit_workflow davranışı. .xaml veya project.json dosyalarıyla çalışırken otomatik eklenir.
+globs: ["**/*.xaml", "**/project.json"]
+alwaysApply: false
+---
+
+# UiPath XAML — Düzenleme Kuralları
+
+Bu rule sadece bir UiPath projesinde (.xaml / project.json bağlamda) otomatik aktifleşir.
+`uipath-orientation` (alwaysApply) ile birlikte okunur.
+
+## edit_workflow davranışı (ADR-0004)
+`edit_workflow` string-replace yapar, `.bak` yedeği alır ve `{clr-namespace:NS;assembly=ASM}Type` marker'ından xmlns'i **auto-inject** eder. Ham prefix yazma — marker formatını kullan.
+
+## Property kaynağı
+Property kind/type/required → her zaman `get_activity_metadata` (`.local/docs` → DLL reflection). Tahmin yok.
+
+## Sık XAML hataları
+| Hata | Doğrusu |
+|---|---|
+| `<uia:Assign>` | `<Assign>` (prefix yok, System.Activities) |
+| `Level="UiPath.Core.LogLevel.Info"` | `Level="Info"` |
+| `InArgument x:TypeArguments="x:Object"` (WriteLine/LogMessage) | `x:TypeArguments="x:String"` |
+| `String[]` için `x:String[]` | `s:String[]` (xmlns:s = System) |
+| Property hem attribute hem child element | Sadece biri — ikisi olursa Studio `{x:Null}` enjekte eder |
+| `WaitForReadyArgument="Complete"` SPA'da | `Interactive` |
+| NTypeInto Text içinde `[k(enter)]` Simulate'de | NClick on submit/suggest |
+| NKeyboardShortcuts Hardware Events ile Enter | NClick submit (Hardware Events focus kaybeder) |
+| `Language="VisualBasic"` InvokeCode'da | Kaldır (UiPath 26.x'te geçersiz) |
+| Enum değerini tahmin etmek | `get_activity_metadata` ile öğren |
+
+## Doğrulama
+Her `edit_workflow` sonrası terminal'den: `uip rpa analyze --project-path . --output json`. Studio açıksa `fill_activity` bridge'i anlık state verir.
+
+## UI aktiviteleri
+NTypeInto/NClick/NSelectItem/NKeyboardShortcuts → adım 0: projede recorder artifact tara (`Guid=`, `Reference=`, `ContentHash=`). Yoksa `cdp-selector-pipeline` skill (CDP → webctrl → edit_workflow inject). Detay: `ui-activity` skill.

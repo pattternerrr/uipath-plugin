@@ -1,0 +1,15 @@
+{
+  "name": "mustafa-uipath",
+  "owner": { "name": "Mustafa Basar", "email": "mustafa.basar777@gmail.com" },
+  "metadata": {
+    "description": "UiPath Studio/RPA automation plugins for Cursor.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "uipath-mcp-plugin",
+      "source": "./",
+      "description": "UiPath Studio/RPA workflow automation: typed C# MCP server (7 tools), canonical CDP selector pipeline, structural guard. Windows-only."
+    }
+  ]
+}

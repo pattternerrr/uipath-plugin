@@ -1,0 +1,36 @@
+---
+description: UiPath/RPA/.xaml işine başlarken zorunlu yönlendirme — stack, 7 MCP tool, kanonik çağrı sırası, yasak akışlar. UiPath Studio projesi, .xaml workflow, RPA aktivitesi (NClick/NTypeInto/LogMessage/Assign) söz konusu olduğunda her zaman uygula.
+alwaysApply: true
+---
+
+# UiPath MCP — Yönlendirme (Cursor)
+
+UiPath projesi (project.json + .xaml) üzerinde çalışırken bu kurallar **istisnasız** geçerlidir.
+Cursor'da `SessionStart` hook'u Claude Code'daki gibi otomatik bootstrap yapmaz; bu alwaysApply rule onun yerine geçer.
+
+## İLK HAMLE
+Herhangi bir UiPath/.xaml işine başlamadan önce **`mcp_orientation` MCP tool'unu çağır** (kanonik handshake, ADR-0012). Determinizm sözleşmesi + tam tool sözlüğü oradadır. Her `BULUNAMADI` durumunda oraya dön.
+
+## Stack — üç katman, çakışmaz
+- **MCP** (`uipath-mcp-csharp`, 7 typed tool): XAML structural ops, activity metadata, Studio pipe bridge.
+- **`uip` CLI** (Cursor terminalinden): build, publish, run, **analyze (validation)**, package inspect. Örn: `uip rpa analyze --project-path . --output json`.
+- **Skill'ler** (Agent Requested): `ui-activity`, `cdp-selector-pipeline`, `issue-tracker`, `triage-labels`, `domain` — ihtiyaç anında çağrılır.
+
+## 7 MCP Tool (hepsi bu — başkası YOK)
+`mcp_orientation` (ilk çağrı) · `set_project_root` · `get_activity_metadata` · `get_workflow_outline` · `read_workflow` (son çare, satır aralığı ver) · `edit_workflow` (xmlns auto-inject + .bak) · `fill_activity` (kanonik iskelet).
+Validation/build/run/install MCP'de **yok** → `uip` CLI ile terminal'den yap.
+
+## Kanonik çağrı sırası
+```
+mcp_orientation → set_project_root → get_activity_metadata → fill_activity → edit_workflow → (terminal) uip rpa analyze
+```
+
+## En kritik kurallar
+1. **TAHMİN YASAK.** xmlns prefix / property kind / enum / assembly için her zaman `get_activity_metadata`. Veri yoksa `BULUNAMADI` — uydurma. Yanlış veri, BULUNAMADI'dan kötüdür.
+2. **.xaml'a doğrudan dokunma.** Cursor'un dosya editörü ile .xaml düzenleme YASAK — her değişiklik `edit_workflow` MCP tool'u ile. MCP çalışmıyorsa önce MCP'yi düzelt, etrafından dolaşma.
+3. **Her değişiklikten sonra** `uip rpa analyze` (terminal) ile doğrula.
+4. **Bilmiyorsan sor** — workaround uydurma, numaralı net soru sor.
+5. **UI aktivitesi** (NClick/NTypeInto/NSelectItem) → önce `ui-activity` + `cdp-selector-pipeline` skill'lerini kullan. Hand-write 4-attribute webctrl selector = tahmin, yasak.
+
+## Yasak akışlar
+OR-tabanlı selector pipeline · native element için JS-inject (CDP yeterli) · repair-loop (fail sonrası körlemesine tekrar) · doğrulanmamış minimal webctrl · editör ile .xaml elle düzenleme.

@@ -1,0 +1,9 @@
+{
+  "name": "uipath-mcp-plugin",
+  "displayName": "UiPath MCP",
+  "version": "0.1.0",
+  "description": "UiPath Studio/RPA workflow automation: typed C# MCP server (7 tools), canonical CDP selector pipeline, structural guard. Windows-only.",
+  "author": { "name": "Mustafa Basar", "email": "mustafa.basar777@gmail.com" },
+  "license": "MIT",
+  "keywords": ["uipath", "rpa", "xaml", "automation", "mcp", "studio", "windows"]
+}
