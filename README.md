@@ -34,17 +34,24 @@ Kurulumdan sonra Claude Code'u yeniden başlat (veya `/reload-plugins`).
 
 ## Kurulum — Cursor (2.5+)
 
-Cursor'da plugin sistemi aynı primitive'leri (skills, rules, MCP, hooks) destekler. Akış:
+Cursor'da plugin sistemi aynı primitive'leri (skills, rules, MCP, hooks) destekler. İki parça var:
 
-1. **Plugin (skills + rules):** Cursor → **Settings → Plugins → Team Marketplaces → Import** → bu repo URL'ini yapıştır: `https://github.com/pattternerrr/uipath-plugin` → `uipath-mcp-plugin`'i kur.
-2. **MCP server (7 tool):** Cursor'un henüz plugin-local binary'ye işaret eden bir `${CURSOR_PLUGIN_ROOT}` değişkeni **yok**. Bu yüzden MCP server'ı tek seferlik bir script bağlar — repo'yu klonladığın klasörde:
-   ```
-   pwsh -File scripts\install-cursor.ps1
-   ```
-   Bu, `bin\UiPathMCP.exe`'nin mutlak yolunu çözüp `~/.cursor/mcp.json`'a (global, tüm projeler) yazar. Sadece bu proje için: `-Project` ekle.
-3. **Chrome DevTools MCP** (web selector pipeline için): Cursor marketplace'ten `chrome-devtools-mcp`'yi kur veya `~/.cursor/mcp.json`'a manuel ekle.
+**Parça 1 — Plugin (skills + rules):** Cursor → **Settings → Plugins → Team Marketplaces → Import** → bu repo URL'ini yapıştır: `https://github.com/pattternerrr/uipath-plugin` → `uipath-mcp-plugin`'i kur. (Team Marketplace import, Cursor Teams/Enterprise planı gerektirir.)
 
-Cursor'ı yeniden başlat. **Settings → MCP**'de `uipath-mcp-csharp` (7 tool) görünmeli; rules (`uipath-orientation` alwaysApply + `uipath-xaml` auto-attach) ve skills otomatik aktif olur.
+**Parça 2 — Geri kalan her şey TEK KOMUT:** Repo'yu klonladığın klasörde:
+```
+pwsh -File scripts\setup.ps1 -Yes
+```
+Bu sihirbaz dizini **otomatik seçer** ve tek seferde kurar:
+- **UiPath MCP server** (7 tool) → `bin\UiPathMCP.exe` mutlak yolu `~/.cursor/mcp.json`'a
+- **chrome-devtools-mcp** → `npx chrome-devtools-mcp@latest` (web selector pipeline)
+- **UiPath resmi skill'leri** → `uip skills install --agent cursor`
+
+İnteraktif menü için `-Yes`'siz çalıştır. Sadece bu proje için: `-Scope local`. Sadece MCP istiyorsan minimal alternatif: `scripts\install-cursor.ps1`.
+
+> **Neden script (MCP için):** Cursor'un henüz plugin-local binary'ye işaret eden `${CURSOR_PLUGIN_ROOT}` değişkeni **yok** ve public-marketplace mutlak yol yasak — yani plugin'in kendisi ~71MB'lık bundled exe'ye portatif işaret edemiyor. Script bu boşluğu kapatır.
+
+Cursor'ı yeniden başlat. **Settings → MCP**'de `uipath-mcp-csharp` (7 tool) + `chrome-devtools` görünmeli; rules (`uipath-orientation` alwaysApply + `uipath-xaml` auto-attach) ve skills aktif olur.
 
 **Not — Claude ↔ Cursor farkları:** Claude'un `SessionStart` hook bootstrap'ı Cursor'da yok; yerine `rules/uipath-orientation.mdc` (alwaysApply) geçer — her istekte context'e enjekte olur, hook'tan daha güvenilir. `uip` CLI komutları Cursor terminalinden çağrılır (validation: `uip rpa analyze`).
 

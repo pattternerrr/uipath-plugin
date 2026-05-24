@@ -68,4 +68,6 @@ if ($missing.Count -gt 0) {
     Write-Output ""
     Write-Output "!! EKSIK BAGIMLILIKLAR -- kullaniciya su komutlari calistirmasini soyle:"
     $missing | ForEach-Object { Write-Output "   $_" }
+    Write-Output ""
+    Write-Output "   VEYA hepsini tek komutta: pwsh -File `"$root\scripts\setup.ps1`" -Target claude -Yes"
 }
