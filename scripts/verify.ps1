@@ -84,6 +84,36 @@ if (Test-Path $stale) {
     if ($Fix) { Move-Item $stale "$stale.bak" -Force; Did "uipath-mcp-only.mdc -> .bak" }
 } else { Pass "bayat global rule yok/devre disi" }
 
+# --- 3b. global User Rules (Cursor Settings -> Rules; tum projeleri kapsar) ---
+# Cursor User Rules'u state.vscdb (SQLite) icinde 'aicontext.personalContext' anahtarinda tutar.
+# Otomatik YAZILAMAZ (Cursor acikken DB'ye yazmak riskli) -> -Fix sadece tespit eder, talimat verir.
+Write-Output ""
+Write-Output "-- global User Rules (Settings/Rules) --"
+$db = Join-Path $env:APPDATA "Cursor\User\globalStorage\state.vscdb"
+$urVal = $null; $urReadable = $false
+if (Test-Path $db) {
+    if (Get-Command sqlite3 -ErrorAction SilentlyContinue) {
+        try { $urVal = (& sqlite3 $db "SELECT value FROM ItemTable WHERE key='aicontext.personalContext';" 2>$null) -join "`n"; $urReadable = $true } catch {}
+    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
+        $py = @'
+import sqlite3,sys
+c=sqlite3.connect(sys.argv[1])
+r=c.execute("SELECT value FROM ItemTable WHERE key='aicontext.personalContext'").fetchone()
+print(r[0] if r and r[0] else "")
+'@
+        try { $urVal = (& python -c $py $db 2>$null) -join "`n"; $urReadable = $true } catch {}
+    }
+}
+if (-not $urReadable) {
+    Write-Output "  [..]   User Rules otomatik okunamadi (sqlite3/python yok) — Settings/Rules'a elle bak."
+} elseif ($urVal -match "mcp_orientation") {
+    Pass "User Rules global guardrail yuklu (mcp_orientation marker bulundu)"
+} else {
+    Fail "User Rules global guardrail YOK (Settings/Rules bos veya UiPath kurali eksik)"
+    Write-Output "       -> Cursor: Settings -> Rules -> User Rules'a plugin User Rules metnini yapistir."
+    Write-Output "          (Otomatik yazilamaz: Cursor acikken state.vscdb'ye yazmak riskli.)"
+}
+
 # --- 4. proje-scope rules + skills + AGENTS ---
 Write-Output ""
 Write-Output "-- proje: $projCursor --"
