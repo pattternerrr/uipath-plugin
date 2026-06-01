@@ -84,6 +84,12 @@ mcp_orientation → set_project_root → get_activity_metadata → fill_activity
 - **0016→0018** CDP-only selector pipeline (0016 superseded)
 - **0017** persistent browser profile ile modal bypass
 
+## ✅ "BİTTİ" DONE kontrol listesi (sert kapı — "yaptım" demeden önce)
+1. `get_workflow_outline` Main.xaml'da beklenen aktiviteleri gösteriyor (boş değil).
+2. `uip rpa analyze` → 0 hata.
+3. İstenen çıktıyı **Robot** üretiyor (elle/tarayıcıyla gösterilmedi).
+Biri eksikse BİTMEMİŞTİR. Şüphedeysen DONE değil. MCP/araç düştüyse DUR, improvize etme (Kural #1/#5).
+
 ## Yasak akışlar
 
 - OR-tabanlı selector pipeline (OR-suz projede)

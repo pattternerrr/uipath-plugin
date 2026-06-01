@@ -35,5 +35,28 @@ mcp_orientation → set_project_root → get_activity_metadata → fill_activity
 ## Yasak akışlar
 OR-tabanlı selector pipeline · native element için JS-inject (CDP yeterli) · repair-loop (fail sonrası körlemesine tekrar) · doğrulanmamış minimal webctrl · editör ile .xaml elle düzenleme.
 
+## ✅ "BİTTİ" demeden önce — DONE kontrol listesi (zorunlu, sert kapı)
+Bir UiPath işini "tamamlandı / yaptım" demeden ÖNCE üçü de doğrulanmalı:
+1. **Aktivite var mı:** `get_workflow_outline` Main.xaml'da beklenen aktiviteleri gösteriyor (boş/değişmemiş DEĞİL).
+2. **Temiz mi:** `uip rpa analyze --project-path . --output json` → 0 hata.
+3. **Çıktıyı Robot mu üretiyor:** istenen sonuç `.xaml` çalışınca geliyor — sen elle/tarayıcıyla göstermedin.
+Üçünden biri eksikse iş **BİTMEMİŞTİR**; "yaptım" deme, eksik adımı söyle. Şüphedeysen DONE değildir.
+
+## ⛔ ETRAFINDAN DOLAŞMAK YASAK (en sık başarısızlık kökü)
+Bir araç başarısız olunca **başka yoldan tamamlama** — bu sessiz tahmindir, kategori hatasıdır.
+Tetik → tek doğru aksiyon: **(1) aracı düzelt; düzelemiyorsan (2) DUR + kullanıcıya net söyle (Kural #5).**
+
+Somut "dolaşma" desenleri (hepsi YASAK):
+| Araç takıldı | YASAK dolaşma | Doğrusu |
+|---|---|---|
+| UiPath MCP düştü | Cursor tarayıcısı / başka MCP ile "işi" yapmak | MCP'yi ayağa kaldır (Kural #1), sonra workflow kur |
+| `edit_workflow` çalışmıyor | shell/editör ile `.xaml` yazmak | MCP'yi düzelt — elle yazma asla |
+| `get_activity_metadata` → BULUNAMADI | xmlns/enum/property tahmin etmek | araştır; bulunmazsa kullanıcıya sor (Kural #2) |
+| selector benzersiz çıkmadı | 4-attribute elle webctrl | anchor ekle / kullanıcıya sor |
+| bir adım takıldı | atlayıp "kısmen yaptım" demek | takılmayı bildir, DONE deme |
+| shell ~70sn yavaş | kestirme/yarım iş | yavaşlığı tolere et, doğru işi yap |
+
+Kestirme = sessiz tahmin = mallık. Şüphedeysen DUR ve sor; "başka yoldan hallettim" teslimat değildir.
+
 ## ⛔ KATEGORİ HATASI (en sık Cursor tuzağı)
 Teslimat = **çalışan `Main.xaml` workflow'u.** CDP/tarayıcı ile gerçek iş verisini (ürün/fiyat/tablo) çekip kullanıcıya gösterip "yaptım" demek YASAK — veri çekme Robot'un işi (UiPath extraction aktiviteleri `.xaml`'da). CDP **yalnızca selector keşfi**; dönen veri çıktı değil, selector'ın doğru elementi bulduğunun kanıtıdır. Ortam sürtünmesinde (MCP düştü, shell yavaş) kestirme/etrafından dolaşma → önce MCP'yi düzelt, sonra workflow'u kur.
