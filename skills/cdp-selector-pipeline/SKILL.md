@@ -7,6 +7,17 @@ version: 0.1.0
 
 Web UI selector ihtiyacında **tek kaynak: Chrome DevTools MCP `evaluate_script`**. CLI snapshot / Object Repository / Studio recorder KULLANILMAZ — manuel DOM inspect + webctrl daha hızlı ve doğru.
 
+## ⛔ SINIR — kategori hatası (EN KRİTİK, önce bunu oku)
+
+CDP / `evaluate_script` **YALNIZCA selector keşfi** içindir: element bul, attribute oku, webctrl üret. **HEPSİ BU.**
+
+- **Gerçek iş verisini (ürün listesi, fiyat, tablo) `evaluate_script` ile ÇEKMEK YASAK.** Veri çekme Robot'un işi → UiPath extraction aktiviteleri (Extract Table/Structured Data, Get Text) `.xaml`'da kurulur.
+- **Teslimat = çalışan `Main.xaml` workflow'u.** Tarayıcıyla veri döndürüp kullanıcıya göstermek **"iş bitti" DEĞİLDİR** — Robot tek satır iş yapmadıysa ilerleme sıfırdır.
+- Chrome MCP ile sayfadan veri dönmesini "ilerleme" diye sunmak = **kategori hatası** (doğru problem, yanlış araç). Cursor'ın tipik tuzağı: selector için açtığı tarayıcıdan veriyi de çekip teslim sanması.
+- Ortam sürtünmesi (MCP düştü, shell yavaş, `evaluate_script` yok) → **etrafından dolaşma, kestirme yapma.** UiPath MCP'yi düzelt (Kural #1), sonra workflow'u kur. Kestirme = sessiz tahmin = kategori hatası.
+
+**Akış her zaman:** CDP → selector → `edit_workflow` ile UiPath aktivitesine inject → Robot çalışınca veri gelir. CDP veriyi getirir ama o veri **çıktı değil, sadece selector'ın doğru elementi bulduğunun kanıtıdır.**
+
 ## Önkoşul
 
 - `chrome-devtools-mcp` kurulu olmalı (`/plugin install chrome-devtools-mcp@claude-plugins-official`).

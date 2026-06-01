@@ -89,6 +89,8 @@ mcp_orientation → set_project_root → get_activity_metadata → fill_activity
 - Repair-loop (fail sonrası körlemesine tekrar)
 - Elle minimal webctrl (4 attribute) — uniqueness doğrulamadan
 - `Edit`/`Write` ile .xaml'a dokunmak
+- **CDP/tarayıcı ile gerçek iş verisini çekip "yaptım" sanmak** — teslimat = çalışan `.xaml`; veri çekme Robot'un işi (extraction aktiviteleri). CDP yalnızca selector keşfi. Bu KATEGORİ HATASIDIR.
+- Ortam sürtünmesinde (MCP düştü / shell yavaş) kestirme/etrafından dolaşma — önce MCP'yi düzelt (Kural #1)
 
 ## Sık XAML hataları
 

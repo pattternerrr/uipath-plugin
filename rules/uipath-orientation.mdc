@@ -34,3 +34,6 @@ mcp_orientation → set_project_root → get_activity_metadata → fill_activity
 
 ## Yasak akışlar
 OR-tabanlı selector pipeline · native element için JS-inject (CDP yeterli) · repair-loop (fail sonrası körlemesine tekrar) · doğrulanmamış minimal webctrl · editör ile .xaml elle düzenleme.
+
+## ⛔ KATEGORİ HATASI (en sık Cursor tuzağı)
+Teslimat = **çalışan `Main.xaml` workflow'u.** CDP/tarayıcı ile gerçek iş verisini (ürün/fiyat/tablo) çekip kullanıcıya gösterip "yaptım" demek YASAK — veri çekme Robot'un işi (UiPath extraction aktiviteleri `.xaml`'da). CDP **yalnızca selector keşfi**; dönen veri çıktı değil, selector'ın doğru elementi bulduğunun kanıtıdır. Ortam sürtünmesinde (MCP düştü, shell yavaş) kestirme/etrafından dolaşma → önce MCP'yi düzelt, sonra workflow'u kur.
