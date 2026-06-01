@@ -36,10 +36,10 @@ Sihirbaz **global kapsamda** (`~/.cursor` / `~/.claude` — tüm projeler) şunl
 
 Soru sormadan default (Cursor + global): `pwsh -File scripts\setup.ps1 -Yes`. Sadece bu proje için: `-Scope local`.
 
-Her iki ekosistemde de **MCP + chrome + UiPath resmi skill'lerini script kurar**. Aşağıdaki tek ek adım, plugin'in kendi **skills + rules** kısmını ilgili uygulamaya bağlar.
+Her iki ekosistemde de **MCP + chrome + UiPath resmi skill'lerini script kurar**. **Cursor için** script ayrıca plugin'in kendi **rules + skills + AGENTS.md**'sini de projeye kopyalar — ek adım yok. **Claude için** plugin'in kendi parçası slash-command ile gelir (aşağıda).
 
-### Cursor — ek adım (plugin: skills + rules)
-Cursor → **Settings → Plugins → Team Marketplaces → Import** → `https://github.com/pattternerrr/uipath-plugin` → `uipath-mcp-plugin` kur. (Enterprise/Teams planı gerekir.) Bu, `rules/uipath-orientation.mdc` (alwaysApply) + `uipath-xaml.mdc` (auto-attach) + skills'i getirir.
+### Cursor — ek adım YOK
+Script şunların hepsini yapar: MCP repoint + chrome + resmi skill'ler + `rules/*.mdc` (`uipath-orientation` + `uipath-xaml`, ikisi alwaysApply) → `<proje>\.cursor\rules\`, 5 plugin skill → `<proje>\.cursor\skills\`, `AGENTS.md` → proje kökü. Ayrıca eski/bozuk kurulum kalmışsa (bayat global rule, çift marketplace kaydı) tespit edip onarır. **Marketplace import gerekmez** (opsiyonel Enterprise alternatifi: Settings → Plugins → Team Marketplaces → Import → repo URL).
 
 ### Claude Code — ek adım (plugin)
 Script `uip` skill'lerini kurar ve şu 3 satırı ekrana yazar (ps1 slash-command çalıştıramaz) — Claude Code içine yapıştır:
@@ -52,7 +52,9 @@ Script `uip` skill'lerini kurar ve şu 3 satırı ekrana yazar (ps1 slash-comman
 
 Kurulum sonrası ilgili uygulamayı yeniden başlat (Claude'da `/reload-plugins` de olur).
 
-> **Neden script (MCP için):** Cursor'un plugin-local binary'ye işaret eden `${CURSOR_PLUGIN_ROOT}` değişkeni **yok** ve public-marketplace mutlak yol yasak — plugin kendisi ~71MB bundled exe'ye portatif işaret edemiyor. Script bu boşluğu mutlak yolu config'e yazarak kapatır. (Sadece MCP isteyen için minimal alternatif: `scripts\install-cursor.ps1`.)
+> **Neden script (Cursor için):** Cursor'un plugin-local binary'ye işaret eden `${CURSOR_PLUGIN_ROOT}` değişkeni **yok** ve public-marketplace mutlak yol yasak — plugin kendisi ~71MB bundled exe'ye portatif işaret edemiyor. Ayrıca Cursor rules dosya-tabanlı **sadece proje-scope** yüklenir (global `~/.cursor/rules` dokümante load path değil). Script bu iki boşluğu birden kapatır: MCP'nin mutlak yolunu config'e yazar + rules/skills/AGENTS'ı projeye kopyalar. (Sadece MCP isteyen için minimal alternatif: `scripts\install-cursor.ps1`.)
+
+> **Antivirüs notu:** `bin\UiPathMCP.exe` self-contained .NET exe olduğu için bazı antivirüsler clone sonrası **karantinaya** alabilir. Script (`.ps1`) çalışır ama MCP bağlanmazsa: exe'yi AV'de **exclusion**'a ekle (clone klasörünü tümüyle izin listesine almak en temizi), karantinadan geri yükle, Cursor'ı yeniden başlat. Build gerekmez — exe repoda hazır gelir.
 
 **Not — Claude ↔ Cursor farkı:** Claude'un `SessionStart` hook bootstrap'ı Cursor'da yok; yerine `rules/uipath-orientation.mdc` (alwaysApply) geçer — her istekte context'e enjekte, hook'tan güvenilir. `uip` komutları Cursor terminalinden çağrılır.
 
@@ -76,9 +78,10 @@ Ajan her UiPath/.xaml işine başlamadan önce `mcp_orientation` çağırır (ka
 - `/help` → skill'ler `uipath-mcp-plugin:<skill>` namespace'iyle görünür
 
 **Cursor:**
-- Settings → Plugins → `uipath-mcp-plugin` installed (skills + rules)
 - Settings → MCP → `uipath-mcp-csharp` connected, **7 tool**
-- Rules: `uipath-orientation` (Always) + `uipath-xaml` (Auto Attached, `.xaml`/`project.json`)
+- Rules: `uipath-orientation` (Always) + `uipath-xaml` (Always) — `<proje>\.cursor\rules\`
+- Skills: `<proje>\.cursor\skills\` altında 5 klasör (`ui-activity`, `cdp-selector-pipeline`, ...)
+- `<proje>\AGENTS.md` mevcut
 
 ## Geliştirici notları
 
