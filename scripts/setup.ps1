@@ -34,7 +34,8 @@ Say "   UiPath plugin kurulum sihirbazi  (Claude Code + Cursor)"
 Say "============================================================"
 
 # --- 0. bundled MCP exe mutlak yolu ---
-$binExe = Join-Path (Split-Path $PSScriptRoot -Parent) "bin\UiPathMCP.exe"
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$binExe = Join-Path $repoRoot "bin\UiPathMCP.exe"
 if (-not (Test-Path $binExe)) {
     Warn "bin\UiPathMCP.exe yok ($binExe)"
     Warn "Repo'yu klonladin mi? Dev isen once: scripts\publish-bins.ps1"
@@ -73,6 +74,51 @@ function Merge-McpServer {
     $json | ConvertTo-Json -Depth 10 | Set-Content -Path $CfgPath -Encoding UTF8
 }
 
+# --- yardimci: kaynak klasoru hedefe kopyala (hedefi olusturur, icindekileri ezer) ---
+function Copy-Tree {
+    param([string]$Src, [string]$Dst)
+    if (-not (Test-Path $Src)) { return $false }
+    if (-not (Test-Path $Dst)) { New-Item -ItemType Directory -Path $Dst -Force | Out-Null }
+    Copy-Item -Path (Join-Path $Src "*") -Destination $Dst -Recurse -Force
+    return $true
+}
+
+# --- yardimci: bilinen bayat artifact'lari devre disi birak (eski 34-tool donemi) ---
+# Arkadaslarda genelde yoktur (no-op); eski/bozuk kurulum kalmissa tek komutla temizler.
+function Disable-StaleArtifacts {
+    param([string]$CursorHome)
+    # Bayat global rule: silinmis tool'lara (install_package/create_workflow/validate_xml) "zorunlu" diye
+    # isaret edip agent'i CLI yerine olmayan MCP tool'una yonlendiriyordu. Silmiyoruz, .bak'a tasiyoruz.
+    $staleRule = Join-Path $CursorHome "rules\uipath-mcp-only.mdc"
+    if (Test-Path $staleRule) {
+        $bak = "$staleRule.bak"
+        if (Test-Path $bak) { Remove-Item $bak -Force }
+        Move-Item $staleRule $bak -Force
+        Warn "Bayat global rule devre disi: uipath-mcp-only.mdc -> .bak (silinmis tool'lara isaret ediyordu)"
+    }
+    # Eski JS MCP server kaydi (iptal edilen uipath-workflow-tools) -> sadece uyar, ezme/silme.
+    $cfg = Join-Path $CursorHome "mcp.json"
+    if (Test-Path $cfg) {
+        $j = Get-Content $cfg -Raw | ConvertFrom-Json
+        if ($j.PSObject.Properties.Name -contains "mcpServers" -and
+            $j.mcpServers.PSObject.Properties.Name -contains "uipath-workflow-tools") {
+            Warn "Eski 'uipath-workflow-tools' (legacy JS) mcp.json'da duruyor -> kullanmiyorsan elle sil."
+        }
+    }
+    # Cift-kayit riski: Cursor marketplace'ten ayni plugin import edilmisse, MCP+rules cakisir.
+    # Generic var/yok kontrolu (klasor yapisi tahmin edilmez): plugins\ altinda plugin adi geciyor mu.
+    $pluginsDir = Join-Path $CursorHome "plugins"
+    if (Test-Path $pluginsDir) {
+        $hit = Get-ChildItem $pluginsDir -Recurse -ErrorAction SilentlyContinue |
+               Where-Object { $_.Name -like "*uipath-mcp-plugin*" } | Select-Object -First 1
+        if ($hit) {
+            Warn "Marketplace import tespit edildi: $($hit.FullName)"
+            Warn "  -> CIFT KAYIT riski. Cursor: Settings/Plugins -> uipath-mcp-plugin import'u KALDIR."
+            Warn "     Tek kaynak script olsun (MCP+rules+skills bu script'ten gelir)."
+        }
+    }
+}
+
 $uipExists = [bool](Get-Command uip -ErrorAction SilentlyContinue)
 $npxExists = [bool](Get-Command npx -ErrorAction SilentlyContinue)
 
@@ -84,6 +130,9 @@ if ($Target -eq "cursor" -or $Target -eq "both") {
     if ($Scope -eq "local") { $cfgDir = Join-Path (Get-Location) ".cursor" }
     else                    { $cfgDir = Join-Path $env:USERPROFILE ".cursor" }
     $cfg = Join-Path $cfgDir "mcp.json"
+
+    # 0) temizlik: bayat artifact'lar (global ~/.cursor, scope'tan bagimsiz)
+    Disable-StaleArtifacts -CursorHome (Join-Path $env:USERPROFILE ".cursor")
 
     # 1) UiPath MCP server
     Merge-McpServer -CfgPath $cfg -Name "uipath-mcp-csharp" -Server ([PSCustomObject]@{
@@ -111,6 +160,32 @@ if ($Target -eq "cursor" -or $Target -eq "both") {
             try { & uip @skArgs | Out-Null; Ok "UiPath skill'leri -> agent cursor ($Scope)" }
             catch { Warn "uip skills install hata: $($_.Exception.Message) (uip login gerekebilir)" }
         } else { Warn "uip CLI yok -> skill kurulamadi. https://docs.uipath.com/uipath-cli/standalone/latest" }
+    }
+
+    # 4) plugin'in KENDI rules + skills'i -> PROJE .cursor/ (marketplace import gerekmesin diye)
+    #    ONEMLI: Cursor rules/skills SADECE proje-scope dosya yolundan yuklenir.
+    #    Global ~/.cursor/rules dokumante edilmis bir load path DEGIL (global = Settings/Rules UI).
+    #    Skills: <proje>/.cursor/skills/ recursive auto-discover. Bu yuzden $Scope'tan bagimsiz,
+    #    her zaman calisilan projenin .cursor'una kopyalanir. (Komutu UiPath proje klasorunde calistir.)
+    $projCursor = Join-Path (Get-Location) ".cursor"
+    if (Copy-Tree (Join-Path $repoRoot "rules") (Join-Path $projCursor "rules")) {
+        Ok "plugin rules -> $projCursor\rules (uipath-orientation + uipath-xaml, alwaysApply)"
+    } else { Warn "rules\ bulunamadi (repo eksik?)" }
+    if (Copy-Tree (Join-Path $repoRoot "skills") (Join-Path $projCursor "skills")) {
+        Ok "plugin skills -> $projCursor\skills (ui-activity, cdp-selector-pipeline, ...)"
+    } else { Warn "skills\ bulunamadi (repo eksik?)" }
+
+    # 5) AGENTS.md -> proje koku (Cursor CLAUDE.md okumaz, AGENTS.md okur).
+    $agentsSrc = Join-Path $repoRoot "AGENTS.md"
+    $agentsDst = Join-Path (Get-Location) "AGENTS.md"
+    if (Test-Path $agentsSrc) {
+        if (Test-Path $agentsDst) { Warn "AGENTS.md zaten var -> ezilmedi ($agentsDst)" }
+        else { Copy-Item $agentsSrc $agentsDst; Ok "AGENTS.md -> $agentsDst (derin referans, Cursor okur)" }
+    }
+
+    if ($Scope -eq "global") {
+        Info "Not: MCP global'e yazildi ama rules/skills proje-scope (Cursor global rules dosyadan yuklenmez)."
+        Info "     Komutu UiPath proje klasorunde calistirdigindan emin ol; rules/skills oraya indi."
     }
 }
 
@@ -141,8 +216,8 @@ Say "============================================================"
 Say "  Kurulum bitti. Dogrulama:"
 if ($Target -ne "claude") {
     Say "   Cursor  -> yeniden baslat -> Settings/MCP: uipath-mcp-csharp (7 tool) + chrome-devtools"
-    Say "             Settings/Rules : uipath-orientation (Always) + uipath-xaml (Auto)"
-    Say "             (skills+rules plugin'i: Settings/Plugins/Team Marketplaces/Import -> repo URL)"
+    Say "             Settings/Rules : uipath-orientation (Always) + uipath-xaml (Always)"
+    Say "             rules + skills + AGENTS.md script tarafindan kopyalandi (marketplace import GEREKMEZ)"
 }
 if ($Target -ne "cursor") {
     Say "   Claude  -> /mcp: uipath-mcp-csharp (7 tool) ; /plugin: uipath-mcp-plugin enabled"

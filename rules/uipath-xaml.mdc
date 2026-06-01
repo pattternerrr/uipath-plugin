@@ -1,12 +1,13 @@
 ---
-description: UiPath .xaml workflow düzenleme detayları — sık XAML hataları, namespace/enum kuralları, edit_workflow davranışı. .xaml veya project.json dosyalarıyla çalışırken otomatik eklenir.
+description: UiPath .xaml workflow düzenleme guardrail'leri — sık XAML hataları, namespace/enum kuralları, edit_workflow davranışı. Her zaman aktif (proje-scope kurulduğu için yalnızca UiPath projelerinde mevcut).
 globs: ["**/*.xaml", "**/project.json"]
-alwaysApply: false
+alwaysApply: true
 ---
 
 # UiPath XAML — Düzenleme Kuralları
 
-Bu rule sadece bir UiPath projesinde (.xaml / project.json bağlamda) otomatik aktifleşir.
+Bu rule **her istekte** aktiftir (alwaysApply). `edit_workflow` ile XAML üretimi sırasında
+`.xaml` dosyası editörde açık olmasa bile guardrail'ler context'te kalsın diye glob-gated DEĞİL.
 `uipath-orientation` (alwaysApply) ile birlikte okunur.
 
 ## edit_workflow davranışı (ADR-0004)
