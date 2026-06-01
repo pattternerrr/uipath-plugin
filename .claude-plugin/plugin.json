@@ -1,6 +1,6 @@
 {
   "name": "uipath-mcp-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "UiPath Studio/RPA workflow automation: typed C# MCP server, canonical selector pipeline, structural guard.",
   "author": { "name": "Mustafa Basar", "email": "mustafa.basar777@gmail.com" },
   "repository": "https://github.com/pattternerrr/uipath-plugin",
