@@ -195,6 +195,29 @@ if ($Target -eq "cursor" -or $Target -eq "both") {
         else { Copy-Item $agentsSrc $agentsDst; Ok "AGENTS.md -> $agentsDst (derin referans, Cursor okur)" }
     }
 
+    # 6) Cursor hooks -> proje .cursor\hooks.json (MUTLAK yol; Cursor'da ${CURSOR_PLUGIN_ROOT} yok).
+    #    beforeShellExecution = guard-shell (shell .xaml yazimini DENY).
+    #    afterFileEdit       = after-file-edit (editor .xaml-edit'i POST-HOC uyar + violation flag).
+    #    NOT: Cursor editor-yazmayi ONCEDEN bloklayamaz (beforeFileEdit yok) — bu yapisal sinir.
+    $guardSh = (Join-Path $repoRoot "hooks\cursor\guard-shell.ps1") -replace '\\','/'
+    $afterEd = (Join-Path $repoRoot "hooks\cursor\after-file-edit.ps1") -replace '\\','/'
+    $hooksJson = Join-Path $projCursor "hooks.json"
+    if (Test-Path $hooksJson) {
+        Warn "hooks.json zaten var -> ezilmedi ($hooksJson). Elle birlestir (guard-shell + after-file-edit)."
+    } else {
+        $hookObj = [ordered]@{
+            version = 1
+            hooks   = [ordered]@{
+                beforeShellExecution = @( @{ command = "pwsh -NoProfile -File `"$guardSh`"" } )
+                afterFileEdit        = @( @{ command = "pwsh -NoProfile -File `"$afterEd`"" } )
+            }
+        }
+        if (-not (Test-Path $projCursor)) { New-Item -ItemType Directory -Path $projCursor -Force | Out-Null }
+        $hookObj | ConvertTo-Json -Depth 6 | Set-Content -Path $hooksJson -Encoding UTF8
+        Ok "Cursor hooks -> $hooksJson (beforeShellExecution + afterFileEdit)"
+        Info "     Cursor'i yeniden baslat; editor-yazma onceden bloklanamaz (yapisal), shell-yazma bloklanir."
+    }
+
     if ($Scope -eq "global") {
         Info "Not: MCP global'e yazildi ama rules/skills proje-scope (Cursor global rules dosyadan yuklenmez)."
         Info "     Komutu UiPath proje klasorunde calistirdigindan emin ol; rules/skills oraya indi."
