@@ -26,6 +26,12 @@ if (-not $projDir) { $projDir = [string]$in.cwd }
 if (-not $projDir -or -not (Test-Path $projDir)) { exit 0 }
 if (-not (Test-Path (Join-Path $projDir "project.json"))) { exit 0 }  # UiPath projesi degil
 
+# 2b) OPT-IN: done-gate VARSAYILAN KAPALI. analyze Studio kapaliyken ~20sn surer; her
+#     tamamlamada bunu odemek istemeyen kullanici default'ta hic beklemesin. Sert kapiyi
+#     isteyen proje kokune .claude\uipath-done-gate.enabled dosyasi koyar.
+#     (block-xaml PreToolUse zaten HEP acik — asil elle-xaml engellemesi ondan gelir.)
+if (-not (Test-Path (Join-Path $projDir ".claude\uipath-done-gate.enabled"))) { exit 0 }
+
 # 3) Bu session'da xaml dokunuldu mu? (flag yoksa is iddiasi yok -> gecer)
 $flag = Join-Path $projDir ".claude\.uipath-xaml-touched"
 if (-not (Test-Path $flag)) { exit 0 }
