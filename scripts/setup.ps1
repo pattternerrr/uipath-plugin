@@ -96,13 +96,18 @@ function Disable-StaleArtifacts {
         Move-Item $staleRule $bak -Force
         Warn "Bayat global rule devre disi: uipath-mcp-only.mdc -> .bak (silinmis tool'lara isaret ediyordu)"
     }
-    # Eski JS MCP server kaydi (iptal edilen uipath-workflow-tools) -> sadece uyar, ezme/silme.
+    # Eski JS MCP server kaydi (iptal edilen uipath-workflow-tools) -> yedekle + SIL.
+    # Kullanici "eskiyi kullanmiyorum" dedi; bu kayit 34-tool bug'lariyla ([] install vs)
+    # cakisma kaynagi. mcp.json'i .bak'la, sadece bu anahtari kaldir (digerlerine dokunma).
     $cfg = Join-Path $CursorHome "mcp.json"
     if (Test-Path $cfg) {
         $j = Get-Content $cfg -Raw | ConvertFrom-Json
         if ($j.PSObject.Properties.Name -contains "mcpServers" -and
             $j.mcpServers.PSObject.Properties.Name -contains "uipath-workflow-tools") {
-            Warn "Eski 'uipath-workflow-tools' (legacy JS) mcp.json'da duruyor -> kullanmiyorsan elle sil."
+            Copy-Item $cfg "$cfg.bak" -Force
+            $j.mcpServers.PSObject.Properties.Remove("uipath-workflow-tools")
+            $j | ConvertTo-Json -Depth 10 | Set-Content -Path $cfg -Encoding UTF8
+            Warn "Eski 'uipath-workflow-tools' (legacy JS) KALDIRILDI (yedek: mcp.json.bak)"
         }
     }
     # Cift-kayit riski: Cursor marketplace'ten ayni plugin import edilmisse, MCP+rules cakisir.
@@ -152,13 +157,20 @@ if ($Target -eq "cursor" -or $Target -eq "both") {
         }
     }
 
-    # 3) UiPath resmi skill'leri
+    # 3) UiPath resmi skill'leri -> GLOBAL ~/.cursor/skills/<skill>/ (uip oraya kurar, proje degil).
+    #    Zaten kuruluysa ATLA: yeniden install agir/asili kalir (arkadaslar zaten yapmisti).
+    #    Empirik dogrulandi: `uip skills install --agent cursor` -> RootDir=$HOME, skill adi 'uipath-rpa'.
     if (-not $SkipSkills) {
         if ($uipExists) {
-            $skArgs = @("skills", "install", "--agent", "cursor")
-            if ($Scope -eq "local") { $skArgs += "--local" }
-            try { & uip @skArgs | Out-Null; Ok "UiPath skill'leri -> agent cursor ($Scope)" }
-            catch { Warn "uip skills install hata: $($_.Exception.Message) (uip login gerekebilir)" }
+            $offSkill = Join-Path $env:USERPROFILE ".cursor\skills\uipath-rpa"
+            if (Test-Path $offSkill) {
+                Ok "UiPath resmi skill'leri zaten kurulu (~/.cursor/skills/uipath-rpa) -> install atlandi"
+            } else {
+                $skArgs = @("skills", "install", "--agent", "cursor")
+                if ($Scope -eq "local") { $skArgs += "--local" }
+                try { & uip @skArgs | Out-Null; Ok "UiPath skill'leri -> agent cursor ($Scope)" }
+                catch { Warn "uip skills install hata: $($_.Exception.Message) (uip login gerekebilir)" }
+            }
         } else { Warn "uip CLI yok -> skill kurulamadi. https://docs.uipath.com/uipath-cli/standalone/latest" }
     }
 
@@ -197,10 +209,16 @@ if ($Target -eq "claude" -or $Target -eq "both") {
     # Bir ps1 slash-command calistiramaz; o adimlar Claude icinde yazilir.
     if (-not $SkipSkills) {
         if ($uipExists) {
-            $skArgs = @("skills", "install", "--agent", "claude")
-            if ($Scope -eq "local") { $skArgs += "--local" }
-            try { & uip @skArgs | Out-Null; Ok "UiPath skill'leri -> agent claude ($Scope)" }
-            catch { Warn "uip skills install hata: $($_.Exception.Message) (uip login gerekebilir)" }
+            # Claude'da resmi skill -> ~/.claude/skills/rpa-workflow-architect (empirik dogrulandi).
+            $offSkill = Join-Path $env:USERPROFILE ".claude\skills\rpa-workflow-architect"
+            if (Test-Path $offSkill) {
+                Ok "UiPath resmi skill'leri zaten kurulu (~/.claude/skills/rpa-workflow-architect) -> install atlandi"
+            } else {
+                $skArgs = @("skills", "install", "--agent", "claude")
+                if ($Scope -eq "local") { $skArgs += "--local" }
+                try { & uip @skArgs | Out-Null; Ok "UiPath skill'leri -> agent claude ($Scope)" }
+                catch { Warn "uip skills install hata: $($_.Exception.Message) (uip login gerekebilir)" }
+            }
         } else { Warn "uip CLI yok -> skill kurulamadi." }
     }
     Say ""
