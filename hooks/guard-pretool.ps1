@@ -25,7 +25,7 @@ function Deny([string]$reason) {
 }
 
 $denyMsg = "BLOCKED (Kural #3): .xaml'a elle yazma YASAK. Her XAML degisikligi " +
-           "`edit_workflow` MCP tool'u ile yapilir (xmlns auto-inject + .bak yedek). " +
+           "edit_workflow MCP tool'u ile yapilir (xmlns auto-inject + .bak yedek). " +
            "MCP calismiyorsa once onu duzelt; etrafindan dolasma (Kural #1/#5)."
 
 switch -Regex ($tool) {
