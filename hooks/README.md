@@ -29,6 +29,17 @@ Açıkken: xaml düzenlendiği session'larda Stop'ta analyze çalışır; **hata
 
 ⚠️ **Cursor sınırı:** editör-yazma önceden bloklanamaz (`beforeFileEdit` yok). Shell yolu duvar, editör yolu uyarı+iz. Claude Code'da `guard-pretool` editörü de bloklar — o güç Cursor'da yok. Detay: `cursor/README.md`.
 
+## Performans (ölçüldü)
+| | Süre | Not |
+|---|---|---|
+| pwsh `-NoProfile` cold/warm | ~1500 / ~950ms | hook tabanı; native binary olmadan kırılamaz (kapsam dışı) |
+| guard-pretool — `.xaml` YOK (early-out) | ~1085ms | JSON parse+regex atlanır (ham girdide `.xaml` yoksa anında çık) |
+| guard-pretool — `.xaml` (full) | ~1350ms | deny/allow kararı |
+| MCP cold start + orientation | ~2400ms | tek sefer, session boyunca warm |
+| done-gate analyze (Studio kapalı) | ~21sn | bu yüzden **opt-in**; Studio açıkken pipe ile ~2sn |
+
+`powershell.exe` 5.1 daha hızlı değil (~1400ms). En büyük hız kazançları zaten F1/F2'de geldi (sonsuz disconnect + BULUNAMADI döngüsü → 0); kalan per-hook ~1s pwsh process maliyetidir.
+
 ## Test
 - `guard-pretool`: 7/7 (Edit/Write/Bash .xaml deny, .cs + okuma allow)
 - `after-file-edit`: 2/2 (.xaml uyarı+flag, .cs karışmaz)

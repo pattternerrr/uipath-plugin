@@ -10,6 +10,11 @@
 $ErrorActionPreference = "SilentlyContinue"
 $raw = [Console]::In.ReadToEnd()
 if (-not $raw) { exit 0 }   # girdi yoksa karisma
+
+# HIZLI YOL: komut/dosya '.xaml' icermiyorsa hicbir kural tetiklenemez -> JSON parse +
+# regex'i ATLA, aninda gec. Cogu Bash/Edit cagrisi buradan ucuza cikar (~0.45s tasarruf).
+if ($raw -notmatch '\.xaml') { exit 0 }
+
 try { $in = $raw | ConvertFrom-Json } catch { exit 0 }
 
 $tool = [string]$in.tool_name
