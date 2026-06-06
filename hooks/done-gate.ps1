@@ -39,47 +39,53 @@ if (-not (Test-Path $flag)) { exit 0 }
 # 4) uip yoksa dogrulayamayiz -> FAIL-OPEN (gec).
 if (-not (Get-Command uip -ErrorAction SilentlyContinue)) { exit 0 }
 
-# 5) analyze'i timeout'lu calistir. uip = npm .ps1 shim -> pwsh -Command "& uip ..." ile
-#    KOMUT olarak cozup calistir (kanitlanmis tek calisan yol; `pwsh -File uip.ps1` stdout basmiyor).
-#    SADECE stdout JSON yakala. Hata/timeout/parse-fail -> FAIL-OPEN.
+# 5) `uip rpa build` ile DERLE — analyze/validate DEGIL.
+#    CANLI KANIT (HH projesi): `uip rpa validate` "No diagnostics" derken `uip rpa build`
+#    2 VB derleme hatasini (BC30198) yakaladi. analyze/validate = statik lint, VB expression
+#    derleme hatalarini KACIRIR -> sahte DONE. build = gercek MSBuild compile = tek otorite
+#    (ADR-0001/0007). build basarisizsa Result=Failure + Message doner.
+#    uip = npm .ps1 shim -> pwsh -Command "& uip ..." ile cozulur (kanitlanmis tek calisan yol).
+#    Hata/timeout/parse-fail -> FAIL-OPEN.
 $clean = $false
 $blocked = $false
+$blockDetail = ""
 try {
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = "pwsh"
-    $cmd = "& uip rpa analyze '$projDir' --output json"
+    $cmd = "& uip rpa build '$projDir' --output json"
     $psi.Arguments = "-NoProfile -Command `"$cmd`""
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
     $proc = [System.Diagnostics.Process]::Start($psi)
-    # KRITIK: hem stdout HEM stderr async drain edilmeli. analyze stderr'e yuzlerce [WARN]
-    # yazar; stderr bosaltilmazsa buffer dolar -> process bloke -> 90sn timeout (eski bug).
+    # KRITIK: hem stdout HEM stderr async drain. build stderr'e [ERROR]/[Process] yazar;
+    # bosaltilmazsa buffer dolar -> process bloke -> timeout.
     $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
     $stderrTask = $proc.StandardError.ReadToEndAsync()
-    if (-not $proc.WaitForExit(90000)) {
+    if (-not $proc.WaitForExit(180000)) {   # build analyze'dan agir -> 180sn
         try { $proc.Kill() } catch {}
-        exit 0   # timeout -> FAIL-OPEN (uzun CLI isi olabilir, engelleme)
+        exit 0   # timeout -> FAIL-OPEN
     }
     $stdout = $stdoutTask.Result
-    $null = $stderrTask.Result   # drain (icerik onemsiz, buffer'i bosaltmak icin oku)
-    # SAVUNMACI: stdout'ta JSON onunde/arkasinda log/uyari olabilir -> ilk { ... son } ayikla.
+    $null = $stderrTask.Result   # drain
+    # SAVUNMACI: stdout'ta JSON onunde/arkasinda log olabilir -> ilk { ... son } ayikla.
     $s = $stdout.IndexOf('{'); $e = $stdout.LastIndexOf('}')
     if ($s -ge 0 -and $e -gt $s) { $stdout = $stdout.Substring($s, $e - $s + 1) }
     $json = $stdout | ConvertFrom-Json
-    # Pozitif temiz: Result=Success ve Data.Success=true. Pozitif hata: Data.Success=false.
-    if ($json.Result -eq "Success" -and $json.Data.Success -eq $true) { $clean = $true }
-    elseif ($json.Data.Success -eq $false) { $blocked = $true }
-    # Belirsiz (parse var ama beklenmeyen sema) -> ne clean ne blocked -> FAIL-OPEN.
+    # build: Result=Success -> temiz. Result=Failure -> derleme HATASI (blokla).
+    if ($json.Result -eq "Success") { $clean = $true }
+    elseif ($json.Result -eq "Failure") { $blocked = $true; $blockDetail = [string]$json.Message }
+    # Belirsiz sema -> ne clean ne blocked -> FAIL-OPEN.
 } catch {
     exit 0   # CLI/parse hatasi -> FAIL-OPEN
 }
 
 if ($blocked) {
-    $reason = "DONE-gate: 'uip rpa analyze' HATA bildirdi (Data.Success=false). Is BITMEDI. " +
-              "Hatalari 'uip rpa analyze " + $projDir + " --output json' ile gor, duzelt, sonra bitir. " +
-              "Duzeltemiyorsan kullaniciya soyle (Kural #5) — 'bitti' deme."
+    $reason = "DONE-gate: 'uip rpa build' DERLEME HATASI bildirdi. Is BITMEDI. " +
+              "Detay: " + $blockDetail + " | Tam liste: 'uip rpa build " + $projDir + " --output json'. " +
+              "NOT: analyze/validate bu hatalari KACIRIR (statik lint); build = gercek otorite. " +
+              "Duzelt, sonra bitir. Duzeltemiyorsan kullaniciya soyle (Kural #5) — 'bitti' deme."
     [Console]::Error.WriteLine((@{ decision = "block"; reason = $reason } | ConvertTo-Json -Compress))
     exit 2
 }
